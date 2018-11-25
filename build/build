@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Locally build the Docker image, using the abreviated git commit as the tag
+# To be run locally during dev and by Jenkins
+
+set -e
+
+# Location - root of project
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source ${DIR}/settings-env
+
+# Build
+
+cd $DIR/../
+
+echo "[INFO] Building image $IMAGE_NAME"
+docker build --tag $IMAGE_NAME --build-arg container_tag=${TAG} ./
+
+# Only remove intermediate containers on jenkins, we care about space on the build
+if [[ $BUILD_NUMBER ]]; then
+## server
+IMAGES=$(docker images -a -q --filter "dangling=true")
+if [[ $IMAGES ]]; then
+  echo "[INFO] Removing intermediate images"
+  echo $IMAGES
+  docker rmi --force $IMAGES
+else
+  echo "[INFO] No intermediate images to remove."
+fi
+fi

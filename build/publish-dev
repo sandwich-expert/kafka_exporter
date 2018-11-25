@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Push a locally built docker image to the remote registry under our snapshot
+# naming scheme. To build and publish this image, execute ./build/build && ./build publish-dev
+
+# Location - root of project
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd $DIR/../
+
+source ./build/settings-env
+
+DEV_IMAGE="$REPOSITORY:$(whoami)-SNAPSHOT"
+
+docker tag ${IMAGE_NAME} ${DEV_IMAGE}
+
+echo "[INFO] Pushing image ${DEV_IMAGE}"
+docker push ${DEV_IMAGE}
