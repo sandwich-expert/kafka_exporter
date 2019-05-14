@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	kazoo "github.com/krallistic/kazoo-go"
+	"github.com/krallistic/kazoo-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	plog "github.com/prometheus/common/log"
@@ -467,35 +467,35 @@ func init() {
 }
 
 func main() {
+	app := kingpin.Version(version.Print("kafka_exporter")).DefaultEnvars()
 	var (
-		listenAddress = kingpin.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9308").String()
-		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-		topicFilter   = kingpin.Flag("topic.filter", "Regex that determines which topics to collect.").Default(".*").String()
-		groupFilter   = kingpin.Flag("group.filter", "Regex that determines which consumer groups to collect.").Default(".*").String()
-		logSarama     = kingpin.Flag("log.enable-sarama", "Turn on Sarama logging.").Default("false").Bool()
+		listenAddress = app.Flag("web.listen-address", "Address to listen on for web interface and telemetry.").Default(":9308").String()
+		metricsPath   = app.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		topicFilter   = app.Flag("topic.filter", "Regex that determines which topics to collect.").Default(".*").String()
+		groupFilter   = app.Flag("group.filter", "Regex that determines which consumer groups to collect.").Default(".*").String()
+		logSarama     = app.Flag("log.enable-sarama", "Turn on Sarama logging.").Default("false").Bool()
 
 		opts = kafkaOpts{}
 	)
-	kingpin.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
-	kingpin.Flag("sasl.enabled", "Connect using SASL/PLAIN.").Default("false").BoolVar(&opts.useSASL)
-	kingpin.Flag("sasl.handshake", "Only set this to false if using a non-Kafka SASL proxy.").Default("true").BoolVar(&opts.useSASLHandshake)
-	kingpin.Flag("sasl.username", "SASL user name.").Default("").StringVar(&opts.saslUsername)
-	kingpin.Flag("sasl.password", "SASL user password.").Default("").StringVar(&opts.saslPassword)
-	kingpin.Flag("tls.enabled", "Connect using TLS.").Default("false").BoolVar(&opts.useTLS)
-	kingpin.Flag("tls.ca-file", "The optional certificate authority file for TLS client authentication.").Default("").StringVar(&opts.tlsCAFile)
-	kingpin.Flag("tls.cert-file", "The optional certificate file for client authentication.").Default("").StringVar(&opts.tlsCertFile)
-	kingpin.Flag("tls.key-file", "The optional key file for client authentication.").Default("").StringVar(&opts.tlsKeyFile)
-	kingpin.Flag("tls.insecure-skip-tls-verify", "If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure.").Default("false").BoolVar(&opts.tlsInsecureSkipTLSVerify)
-	kingpin.Flag("kafka.version", "Kafka broker version").Default(sarama.V1_0_0_0.String()).StringVar(&opts.kafkaVersion)
-	kingpin.Flag("use.consumelag.zookeeper", "if you need to use a group from zookeeper").Default("false").BoolVar(&opts.useZooKeeperLag)
-	kingpin.Flag("zookeeper.server", "Address (hosts) of zookeeper server.").Default("localhost:2181").StringsVar(&opts.uriZookeeper)
-	kingpin.Flag("kafka.labels", "Kafka cluster name").Default("").StringVar(&opts.labels)
-	kingpin.Flag("refresh.metadata", "Metadata refresh interval").Default("30s").StringVar(&opts.metadataRefreshInterval)
+	app.Flag("kafka.server", "Address (host:port) of Kafka server.").Default("kafka:9092").StringsVar(&opts.uri)
+	app.Flag("sasl.enabled", "Connect using SASL/PLAIN.").Default("false").BoolVar(&opts.useSASL)
+	app.Flag("sasl.handshake", "Only set this to false if using a non-Kafka SASL proxy.").Default("true").BoolVar(&opts.useSASLHandshake)
+	app.Flag("sasl.username", "SASL user name.").Default("").StringVar(&opts.saslUsername)
+	app.Flag("sasl.password", "SASL user password.").Default("").StringVar(&opts.saslPassword)
+	app.Flag("tls.enabled", "Connect using TLS.").Default("false").BoolVar(&opts.useTLS)
+	app.Flag("tls.ca-file", "The optional certificate authority file for TLS client authentication.").Default("").StringVar(&opts.tlsCAFile)
+	app.Flag("tls.cert-file", "The optional certificate file for client authentication.").Default("").StringVar(&opts.tlsCertFile)
+	app.Flag("tls.key-file", "The optional key file for client authentication.").Default("").StringVar(&opts.tlsKeyFile)
+	app.Flag("tls.insecure-skip-tls-verify", "If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure.").Default("false").BoolVar(&opts.tlsInsecureSkipTLSVerify)
+	app.Flag("kafka.version", "Kafka broker version").Default(sarama.V1_0_0_0.String()).StringVar(&opts.kafkaVersion)
+	app.Flag("use.consumelag.zookeeper", "if you need to use a group from zookeeper").Default("false").BoolVar(&opts.useZooKeeperLag)
+	app.Flag("zookeeper.server", "Address (hosts) of zookeeper server.").Default("localhost:2181").StringsVar(&opts.uriZookeeper)
+	app.Flag("kafka.labels", "Kafka cluster name").Default("").StringVar(&opts.labels)
+	app.Flag("refresh.metadata", "Metadata refresh interval").Default("30s").StringVar(&opts.metadataRefreshInterval)
 
-	plog.AddFlags(kingpin.CommandLine)
-	kingpin.Version(version.Print("kafka_exporter"))
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
+	plog.AddFlags(app)
+	app.GetFlag("help").Short('h')
+	kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	plog.Infoln("Starting kafka_exporter", version.Info())
 	plog.Infoln("Build context", version.BuildContext())
@@ -517,16 +517,19 @@ func main() {
 		"Number of Brokers in the Kafka Cluster.",
 		nil, labels,
 	)
+
 	topicPartitions = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "topic", "partitions"),
 		"Number of partitions for this Topic",
 		[]string{"topic"}, labels,
 	)
+
 	topicCurrentOffset = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "topic", "partition_current_offset"),
 		"Current Offset of a Broker at Topic/Partition",
 		[]string{"topic", "partition"}, labels,
 	)
+
 	topicOldestOffset = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "topic", "partition_oldest_offset"),
 		"Oldest Offset of a Broker at Topic/Partition",
