@@ -227,18 +227,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	offset := make(map[string]map[int32]int64)
 
-	now := time.Now()
-
-	if now.After(e.nextMetadataRefresh) {
-		plog.Info("Refreshing client metadata")
-
-		if err := e.client.RefreshMetadata(); err != nil {
-			plog.Errorf("Cannot refresh topics, using cached data: %v", err)
-		}
-
-		e.nextMetadataRefresh = now.Add(e.metadataRefreshInterval)
-	}
-
 	topics, err := e.client.Topics()
 	if err != nil {
 		plog.Errorf("Cannot get topics: %v", err)
@@ -363,13 +351,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			plog.Errorf("Cannot connect to broker %d: %v", broker.ID(), err)
 			return
 		}
-		defer broker.Close()
 
 		groups, err := broker.ListGroups(&sarama.ListGroupsRequest{})
 		if err != nil {
 			plog.Errorf("Cannot get consumer group: %v", err)
 			return
 		}
+
 		groupIds := make([]string, 0)
 		for groupId := range groups.Groups {
 			if e.groupFilter.MatchString(groupId) {
